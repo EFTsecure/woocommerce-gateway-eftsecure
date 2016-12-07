@@ -37,8 +37,8 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 	 */
 	public function __construct() {
 		$this->id                   = 'eftsecure';
-		$this->method_title         = __( 'EftSecure', 'woocommerce-gateway-eftsecure' );
-		$this->method_description   = __( 'EftSecure allows your customers to pay via their internet banking.', 'woocommerce-gateway-eftSecure' );
+		$this->method_title         = __( 'EFTsecure', 'woocommerce-gateway-eftsecure' );
+		$this->method_description   = __( 'EFTsecure allows your customers to pay via their internet banking.', 'woocommerce-gateway-eftsecure' );
 		$this->has_fields           = true;
 		$this->supports             = array();
 
@@ -77,7 +77,7 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 	 * @return string
 	 */
 	public function get_icon() {
-		$icon  = '<img src="http://services.callpay.com/img/products/eftsecure/icon-sm.png" alt="EFTSecure" />';
+		$icon  = '<img src="http://services.callpay.com/img/products/eftsecure/icon-sm.png" alt="EFTsecure" />';
 		return apply_filters( 'woocommerce_gateway_icon', $icon, $this->id );
 	}
 
