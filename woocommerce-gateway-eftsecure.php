@@ -1,9 +1,9 @@
 <?php
 /*
- * Plugin Name: WooCommerce EftSecure Gateway
- * Description: Take bank payments on your store using EftSecure.
+ * Plugin Name: WooCommerce EFTsecure Gateway
+ * Description: Take bank payments on your store using EFTsecure.
  * Author: CallPay
- * Author URI: http://www.eftsecure.com/
+ * Author URI: http://www.eftsecure.co.za/
  * Version: 1.0.0
  * Text Domain: woocommerce-gateway-eftsecure
  * Domain Path: /languages

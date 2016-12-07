@@ -35,7 +35,7 @@ return apply_filters( 'wc_eftsecure_settings',
 		),
         'password' => array(
             'title'       => __( 'API Password', 'woocommerce-gateway-eftsecure' ),
-            'type'        => 'text',
+            'type'        => 'password',
             'description' => __( 'Get your API password from your EFTsecure account.', 'woocommerce-gateway-eftsecure' ),
             'default'     => '',
             'desc_tip'    => true,
