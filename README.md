@@ -1,15 +1,29 @@
-=== WooCommerce EftSecure Payment Gateway ===
-Contributors: callpay
-Tags: eft, eftsecure, woocommerce
-Requires at least: 4.4
-Tested up to: 4.5
+## EftSecure payment gateway plugin for WooCommerce
 
-Take instant eft payments on your store using EftSecure.
+**Contributors:** callpay
 
-== Description ==
+**Tags:** eft, eftsecure, woocommerce
 
-Accept ABSA, Standard Bank, Capitec, Investec, FNB and Nedbank payments directly into your account.
+**Tested:** WooCommerce V2.6.8
 
-EftSecure is available in:
+### Description
 
-* South Africa
+Take instant eft payments on your WooCommerce store using EftSecure.
+
+Accept ABSA, Standard Bank, Capitec, Investec, FNB and Nedbank payments directly into your bank account.
+
+### Installation
+
+1. Download or clone to your desktop.
+2. If downloaded as a zip archive, extract the Plugin folder to your desktop.
+3. Read through the "readme" file thoroughly to ensure you follow the installation instructions.
+4. With your FTP program, upload the Plugin folder to the wp-content/plugins folder in your WordPress directory online.
+5. Go to Plugins screen and find the newly uploaded Plugin in the list.
+6. Click Activate to activate it.
+
+### Setup
+
+1. Goto Plugins -> WooCommerce EftSecure Gateway -> Settings
+2. Insert API Username and Password
+3. Set optional parameters and save
+
