@@ -251,19 +251,17 @@ class WC_Eftsecure {
 				if ( is_wp_error( $result ) ) {
 					$order->add_order_note( __( 'Unable to capture charge!', 'woocommerce-gateway-eftsecure' ) . ' ' . $result->get_error_message() );
 				} else {
-					$order->add_order_note( sprintf( __( 'Eftsecure charge complete (Charge ID: %s)', 'woocommerce-gateway-eftsecure' ), $result->id ) );
+					$order->add_order_note( sprintf( __( 'EFTsecure charge complete (Charge ID: %s)', 'woocommerce-gateway-eftsecure' ), $result->id ) );
 					update_post_meta( $order->id, '_eftsecure_charge_captured', 'yes' );
 
 					// Store other data such as fees
-					update_post_meta( $order->id, 'EftSecure Payment ID', $result->id );
+					update_post_meta( $order->id, 'EFTsecure Payment ID', $result->id );
 
 					if ( isset( $result->balance_transaction ) && isset( $result->balance_transaction->fee ) ) {
-						// Fees and Net needs to both come from Stripe to be accurate as the returned
-						// values are in the local currency of the Stripe account, not from WC.
 						$fee = ! empty( $result->balance_transaction->fee ) ? number_format( $result->balance_transaction->fee / 100, 2, '.', '' ) : 0;
 						$net = ! empty( $result->balance_transaction->net ) ? number_format( $result->balance_transaction->net / 100, 2, '.', '' ) : 0;
-						update_post_meta( $order->id, 'Eftsecure Fee', $fee );
-						update_post_meta( $order->id, 'Net Revenue From EftSecure', $net );
+						update_post_meta( $order->id, 'EFTsecure Fee', $fee );
+						update_post_meta( $order->id, 'Net Revenue From EFTsecure', $net );
 					}
 				}
 			}
@@ -282,7 +280,7 @@ class WC_Eftsecure {
 			$transaction_id = get_post_meta( $order_id, '_eftsecure_transaction_id', true );
 
 			if ( $transaction_id ) {
-                $order->add_order_note( sprintf( __( 'EftSecure refunds need to be manually reversed', 'woocommerce-gateway-eftsecure' )) );
+                $order->add_order_note( sprintf( __( 'EFTsecure refunds need to be manually processed', 'woocommerce-gateway-eftsecure' )) );
                 delete_post_meta( $order->id, '_eftsecure_transaction_id' );
 			}
 		}
