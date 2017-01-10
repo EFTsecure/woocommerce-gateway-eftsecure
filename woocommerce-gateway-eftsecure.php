@@ -4,7 +4,7 @@
  * Description: Take bank payments on your store using EFTsecure.
  * Author: CallPay
  * Author URI: http://www.eftsecure.co.za/
- * Version: 1.0.0
+ * Version: 1.0.1
  * Text Domain: woocommerce-gateway-eftsecure
  * Domain Path: /languages
  *
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Required minimums and constants
  */
-define( 'WC_EFTSECURE_VERSION', '1.0.0' );
+define( 'WC_EFTSECURE_VERSION', '1.0.1' );
 define( 'WC_EFTSECURE_MIN_WC_VER', '2.2.0' );
 define( 'WC_EFTSECURE_MAIN_FILE', __FILE__ );
 define( 'WC_EFTSECURE_PLUGIN_URL', untrailingslashit( plugins_url( basename( plugin_dir_path( __FILE__ ) ), basename( __FILE__ ) ) ) );
