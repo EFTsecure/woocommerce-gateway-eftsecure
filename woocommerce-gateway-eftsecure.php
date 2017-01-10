@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Required minimums and constants
  */
 define( 'WC_EFTSECURE_VERSION', '1.0.0' );
-define( 'WC_EFTSECURE_MIN_WC_VER', '2.5.0' );
+define( 'WC_EFTSECURE_MIN_WC_VER', '2.2.0' );
 define( 'WC_EFTSECURE_MAIN_FILE', __FILE__ );
 define( 'WC_EFTSECURE_PLUGIN_URL', untrailingslashit( plugins_url( basename( plugin_dir_path( __FILE__ ) ), basename( __FILE__ ) ) ) );
 
