@@ -113,8 +113,12 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 		$this->form_fields = include( 'settings-eftsecure.php' );
 	}
 
-    public function validate_password_field($key, $value){
-        $post_data = $this->get_post_data();
+    public function validate_password_field($key, $value = NULL){
+
+        $post_data = $_POST;
+	    if ($value == NULL) {
+            $value = $post_data['woocommerce_eftsecure_'.$key];
+        }
         if( isset($post_data['woocommerce_eftsecure_username']) && empty($value)){
             //not validated
             //add_settings_error($key, 'settings_updated', 'Password is required', 'error');
