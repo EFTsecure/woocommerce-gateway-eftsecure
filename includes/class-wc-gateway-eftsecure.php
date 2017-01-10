@@ -77,7 +77,7 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 	 * @return string
 	 */
 	public function get_icon() {
-		$icon  = '<img src="http://services.callpay.com/img/products/eftsecure/icon-sm.png" alt="EFTsecure" />';
+		$icon  = '<img src="https://services.callpay.com/img/products/eftsecure/icon-sm.png" alt="EFTsecure" />';
 		return apply_filters( 'woocommerce_gateway_icon', $icon, $this->id );
 	}
 
