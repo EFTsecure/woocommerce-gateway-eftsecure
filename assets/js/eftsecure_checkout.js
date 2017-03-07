@@ -15,13 +15,45 @@ jQuery( function( $ ) {
 			$( document.body ).on( 'checkout_error', this.resetModal );
 		},
 
+        validates: function() {
+
+            var $required_inputs;
+
+            if ( $( '#createaccount' ).is( ':checked' ) && $( '#account_password' ).length && $( '#account_password' ).val() === '' ) {
+                return false;
+            }
+
+            // check to see if we need to validate shipping address
+            if ( $( '#ship-to-different-address-checkbox' ).is( ':checked' ) ) {
+                $required_inputs = $( '.woocommerce-billing-fields .validate-required, .woocommerce-shipping-fields .validate-required' );
+            } else {
+                $required_inputs = $( '.woocommerce-billing-fields .validate-required' );
+            }
+
+            if ( $required_inputs.length ) {
+                var required_error = false;
+
+                $required_inputs.each( function() {
+                    if ( $( this ).find( 'input.input-text, select' ).not( $( '#account_password, #account_username' ) ).val() === '' ) {
+                        required_error = true;
+                    }
+                });
+
+                if ( required_error ) {
+                    return false;
+                }
+            }
+
+            return true;
+        },
+
 		isEftsecureChosen: function() {
 			return $( '#payment_method_eftsecure' ).is( ':checked' );
 		},
 
 		isEftsecureModalNeeded: function( e ) {
 			// Don't affect submit if modal is not needed.
-			if (!wc_eftsecure_form.isEftsecureChosen() ) {
+			if (!wc_eftsecure_form.isEftsecureChosen() || !wc_eftsecure_form.validates()) {
 				return false;
 			}
             // Don't affect submit if payment already complete.
