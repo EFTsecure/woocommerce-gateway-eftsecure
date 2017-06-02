@@ -9,3 +9,8 @@
 = 1.0.2 - 2017.03.07 =
 * Validation bug fixes
 
+= 1.0.3 - 2017.05.05 =
+* Additional validation bug fixes
+* Added webhook support
+* Added redirect support and option to enable checkout
+* Precreate order for Checkout widget

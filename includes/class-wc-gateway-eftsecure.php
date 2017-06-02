@@ -25,12 +25,24 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 	 */
 	public $token;
 
+    /**
+     * Checkout widget enabled
+     */
+    public $checkout_enabled;
+
 	/**
 	 * Logging enabled?
 	 *
 	 * @var bool
 	 */
 	public $logging;
+
+    /**
+     * Url for IPN
+     *
+     * @var null|string
+     */
+	public $notifyUrl = null;
 
 	/**
 	 * Constructor
@@ -39,8 +51,9 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 		$this->id                   = 'eftsecure';
 		$this->method_title         = __( 'EFTsecure', 'woocommerce-gateway-eftsecure' );
 		$this->method_description   = __( 'EFTsecure allows your customers to pay via their internet banking.', 'woocommerce-gateway-eftsecure' );
-		$this->has_fields           = true;
+		$this->has_fields           = false;
 		$this->supports             = array();
+       //    $this->view_transaction_url = 'https://eftsecure.callpay.com/gateway_transactions/%s';
 
 		// Load the form fields.
 		$this->init_form_fields();
@@ -52,10 +65,12 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 		$this->title                  = $this->get_option( 'title' );
 		$this->description            = $this->get_option( 'description' );
 		$this->enabled                = $this->get_option( 'enabled' );
+        $this->checkout_enabled       = $this->get_option( 'checkout_enabled' );
 		$this->username               = $this->get_option( 'username' );
 		$this->password               = $this->get_option( 'password' );
 		$this->logging                = 'yes' === $this->get_option( 'logging' );
         $this->order_button_text = __( 'Continue with payment', 'woocommerce-gateway-eftsecure' );
+        $this->notifyUrl = add_query_arg( 'wc-api', 'WC_Gateway_Eftsecure', home_url( '/' ) );
 
         if ( ! class_exists( 'WC_Eftsecure_API' ) ) {
             include_once( dirname( __FILE__ ) . '/class-wc-eftsecure-api.php' );
@@ -65,8 +80,12 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
         WC_Eftsecure_API::set_password( $this->password );
 
 		// Hooks.
-		add_action( 'wp_enqueue_scripts', array( $this, 'payment_scripts' ) );
-		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
+        if ($this->checkout_enabled === 'yes') {
+            add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
+        }
+
+        add_action( 'woocommerce_api_wc_gateway_eftsecure', array( $this, 'check_ipn_response' ) );
+		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options') );
         add_action( 'admin_notices', array( $this, 'admin_notices' ) );
 	}
 
@@ -77,7 +96,8 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 	 * @return string
 	 */
 	public function get_icon() {
-		$icon  = '<img src="https://services.callpay.com/img/products/eftsecure/icon-sm.png" alt="EFTsecure" />';
+
+		$icon  = '<img src="'.WC_Eftsecure_API::getSetting('app_domain').'/img/products/eftsecure/icon-sm.png" alt="EFTsecure" />';
 		return apply_filters( 'woocommerce_gateway_icon', $icon, $this->id );
 	}
 
@@ -142,25 +162,7 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 	 * Payment form on checkout page
 	 */
 	public function payment_fields() {
-		$user = wp_get_current_user();
-
-		if ( $user->ID ) {
-			$user_email = get_user_meta( $user->ID, 'billing_email', true );
-			$user_email = $user_email ? $user_email : $user->user_email;
-		} else {
-			$user_email = '';
-		}
-
-        $pay_button_text = '';
-
-		echo '<div
-			id="eftsecure-payment-data"
-			data-panel-label="' . esc_attr( $pay_button_text ) . '"
-			data-description=""
-			data-email="' . esc_attr( $user_email ) . '"
-			data-amount="' . esc_attr( WC()->cart->total ) . '"
-			data-name="' . esc_attr( get_bloginfo( 'name', 'display' ) ) . '"
-			data-currency="' . esc_attr( strtolower( get_woocommerce_currency() ) ). '">';
+		echo '<div>';
 
 		if ( $this->description ) {
 			echo apply_filters( 'wc_eftsecure_description', wpautop( wp_kses_post( $this->description ) ) );
@@ -184,15 +186,7 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
         wp_enqueue_script( 'eftsecure', 'https://eftsecure.callpay.com/ext/eftsecure/js/checkout.js', '', '2.0', true );
         wp_enqueue_script( 'woocommerce_eftsecure', plugins_url( 'assets/js/eftsecure_checkout.js', WC_EFTSECURE_MAIN_FILE ), array( 'eftsecure' ), WC_EFTSECURE_VERSION, true );
 
-        $token_data = WC_Eftsecure_API::get_token_data();
-		$eftsecure_params = array(
-		    'reference' => uniqid(substr(sanitize_title(get_bloginfo('name')),0,6).'_'),
-            'organisation_id' => $token_data->organisation_id,
-			'token' => $token_data->token,
-            'amount' => WC()->cart->total,
-            'pcolor' => $this->get_option( 'pcolor' ),
-            'scolor' => $this->get_option( 'scolor' )
-		);
+        $eftsecure_params= ['service_url' => WC_Eftsecure_API::getSetting('app_domain')."/eft"];
 
 		wp_localize_script( 'woocommerce_eftsecure', 'wc_eftsecure_params', apply_filters( 'wc_eftsecure_params', $eftsecure_params ) );
 	}
@@ -206,84 +200,138 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 	 *
 	 * @throws Exception If payment will not be accepted.
 	 *
-	 * @return array|void
+	 * @return mixed
 	 */
 	public function process_payment( $order_id, $retry = true, $force_customer = false ) {
 
-        try {
-            $order  = wc_get_order( $order_id );
+        ini_set('display_errors','Off'); //notices breaking json
 
-            if (!isset($_REQUEST['eftsecure_transaction_id'])) {
+        /**
+         * @var $order WC_Order
+         */
+        $order = wc_get_order( $order_id );
+
+        // If order free, do nothing.
+        if ($order->get_total() == 0) {
+            $order->payment_complete();
+            // Return thank you page redirect.
+            return [
+                'result' => 'success',
+                'redirect' => $this->get_return_url($order)
+            ];
+        }
+
+        $transactionID = $this->get_eftsecure_transaction_id();
+        //Result found, process it
+        if ($transactionID != NULL) {
+
+            if ($order->get_status() == 'pending') {
+
+                try {
+
+                    WC_Eftsecure::log("Info: Begin processing payment for order $order_id for the amount of {$order->get_total()}");
+                    // Make sure the transaction is successful.
+                    $response = WC_Eftsecure_API::get_transaction_data($transactionID);
+                    // Process valid response.
+                    $this->process_response($response, $order);
+
+                    // Remove cart.
+                    WC()->cart->empty_cart();
+
+                    do_action('wc_gateway_eftsecure_process_payment', $response, $order);
+
+                    // Return thank you page redirect.
+                    return array(
+                        'result' => 'success',
+                        'redirect' => $this->get_return_url($order)
+                    );
+
+                } catch (Exception $e) {
+                    wc_add_notice($e->getMessage(), 'error');
+                    WC_Eftsecure::log(sprintf(__('Error: %s', 'woocommerce-gateway-eftsecure'), $e->getMessage()));
+
+                    if ($order->has_status(array('pending', 'failed'))) {
+                        $this->send_failed_order_email($order_id);
+                    }
+
+                    do_action('wc_gateway_eftsecure_process_payment_error', $e, $order);
+
+                    return array(
+                        'result' => 'fail',
+                        'redirect' => ''
+                    );
+                }
+            } else {
+                // Return thank you page redirect already flagged as paid by IPN.
                 return array(
-                    'result'   => 'fail',
-                    'redirect' => '',
+                    'result' => 'success',
+                    'redirect' => $this->get_return_url($order)
                 );
             }
-
-
-            // Handle payment.
-            if ( $order->get_total() > 0 ) {
-
-                if ( $order->get_total() * 100 < 50 ) {
-                    throw new Exception( __( 'Sorry, the minimum allowed order total is 0.50 to use this payment method.', 'woocommerce-gateway-eftsecure' ) );
-                }
-
-                WC_Eftsecure::log( "Info: Begin processing payment for order $order_id for the amount of {$order->get_total()}" );
-
-                // Make sure the transaction is successful.
-                $response = WC_Eftsecure_API::get_transaction_data($_REQUEST['eftsecure_transaction_id']);
-                // Process valid response.
-                $this->process_response( $response, $order );
-            } else {
-                $order->payment_complete();
-            }
-
-            // Remove cart.
-            WC()->cart->empty_cart();
-
-            do_action( 'wc_gateway_eftsecure_process_payment', $response, $order );
-
-            // Return thank you page redirect.
-            return array(
-                'result'   => 'success',
-                'redirect' => $this->get_return_url( $order )
-            );
-
-        } catch ( Exception $e ) {
-            wc_add_notice( $e->getMessage(), 'error' );
-            WC_Eftsecure::log( sprintf( __( 'Error: %s', 'woocommerce-gateway-eftsecure' ), $e->getMessage() ) );
-
-            if ( $order->has_status( array( 'pending', 'failed' ) ) ) {
-                $this->send_failed_order_email( $order_id );
-            }
-
-            do_action( 'wc_gateway_eftsecure_process_payment_error', $e, $order );
+        }
+        //Redirect if checkout not enabled
+        else if ($this->checkout_enabled === 'no') {
+            /**
+             * @var $order WC_Order
+             */
+            $pkeyData = WC_Eftsecure_API::get_payment_key_data([
+                'amount' => $order->get_total(),
+                'merchant_reference' => $this->get_order_id($order),
+                'notify_url' => $this->notifyUrl."&order_id=".$order_id,
+                'success_url' => $this->get_return_url( $order ),
+                'cancel_url' => $order->get_checkout_payment_url()
+            ]);
 
             return array(
-                'result'   => 'fail',
-                'redirect' => ''
+                'result' => 'success',
+                'redirect' => $pkeyData->url
             );
         }
+        else if ($this->checkout_enabled === 'yes') {
+            /**
+             * @var $order WC_Order
+             */
+            $pkeyData = WC_Eftsecure_API::get_payment_key_data([
+                'amount' => $order->get_total(),
+                'merchant_reference' => $this->get_order_id($order),
+                'notify_url' => $this->notifyUrl."&order_id=".$order_id
+            ]);
+
+            return array(
+                'result' => 'success',
+                'paymentKey' => $pkeyData->key
+            );
+        }
+
         return;
+
 	}
 
 
-	/**
-	 * Store extra meta data for an order from a Eftsecure Response.
+    /**
+     * Store extra meta data for an order from a Eftsecure Response.
+     *
+     * @param $response
      * @param $order WC_Order
-	 */
+     * @return mixed
+     * @throws Exception
+     */
 	public function process_response( $response, $order ) {
 
         WC_Eftsecure::log( "Processing response: " . print_r( $response, true ) );
 
 	    if ($response->successful == 0) {
+            $order->add_order_note( sprintf( __( 'EFTsecure Transaction Failed: (%s)', 'woocommerce-gateway-eftsecure' ), $response->reason ) );
             throw new Exception( __( 'Payment and order success do not correspond.', 'woocommerce-gateway-eftsecure' ) );
         }
         else if(floatval($response->amount) != floatval($order->get_total())) {
+            WC_Eftsecure::log( 'Order amount ('.floatval($order->get_total()).') and payment amount ('.floatval($response->amount).') do not correspond.' );
             throw new Exception( __( 'Order amount ('.floatval($order->get_total()).') and payment amount ('.floatval($response->amount).') do not correspond.', 'woocommerce-gateway-eftsecure' ) );
         }
 
-        add_post_meta( $order->id, '_eftsecure_transaction_id', $response->id, true );
+        add_post_meta( $this->get_order_id($order), '_transaction_id', $response->id, true );
+
+        $order->add_order_note(sprintf( __( 'EFTsecure charge complete (Transaction ID: %s)', 'woocommerce-gateway-stripe' ), $response->id ));
 
         if ( $order->has_status( array( 'pending', 'failed' ) ) ) {
             $order->reduce_order_stock();
@@ -294,6 +342,71 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 
 		return $response;
 	}
+
+	public function check_ipn_response() {
+
+	    if(!isset($_REQUEST['order_id'])) {
+            WC_Eftsecure::log( __( 'OrderID was not specified in IPN response', 'woocommerce-gateway-eftsecure' ) );
+            throw new Exception( __( 'OrderID was not specified in IPN response', 'woocommerce-gateway-eftsecure' ) );
+        }
+
+        $order_id = $_REQUEST['order_id'];
+        /**
+         * @var $order WC_Order
+         */
+        $order = wc_get_order( $_REQUEST['order_id'] );
+
+        if ($order->get_status() == 'pending') {
+
+            if (!$order) {
+                WC_Eftsecure::log(__('Invalid OrderID was specified in IPN response', 'woocommerce-gateway-eftsecure'));
+                throw new Exception(__('Invalid OrderID was specified in IPN response', 'woocommerce-gateway-eftsecure'));
+            }
+
+            $transactionID = $this->get_eftsecure_transaction_id();
+
+            if ($transactionID == NULL) {
+                WC_Eftsecure::log(__('No eftsecure transactionID specified in IPN response', 'woocommerce-gateway-eftsecure'));
+                throw new Exception(__('No eftsecure transactionID specified in IPN response', 'woocommerce-gateway-eftsecure'));
+            }
+
+            // Make sure the transaction is successful.
+            $response = WC_Eftsecure_API::get_transaction_data($transactionID);
+
+
+            WC_Eftsecure::log("Info: Begin processing IPN for payment for order $order_id for the amount of {$order->get_total()}");
+            $order->add_order_note(sprintf(__('EFTsecure IPN received : %s', 'woocommerce-gateway-stripe'), (($response->successful) ? 'SUCCESS' : 'FAILED')));
+
+            WC_Eftsecure::log("Processing response: " . print_r($response, true));
+
+            if ($response->successful == 0 && $_REQUEST['success'] == 1) {
+                $order->add_order_note(sprintf(__('EFTsecure Transaction Failed: (%s)', 'woocommerce-gateway-eftsecure'), $response->reason));
+                throw new Exception(__('Payment and request success do not correspond.', 'woocommerce-gateway-eftsecure'));
+            } else if (floatval($response->amount) != floatval($order->get_total())) {
+                WC_Eftsecure::log('Order amount (' . floatval($order->get_total()) . ') and payment amount (' . floatval($response->amount) . ') do not correspond.');
+                throw new Exception(__('Order amount (' . floatval($order->get_total()) . ') and payment amount (' . floatval($response->amount) . ') do not correspond.', 'woocommerce-gateway-eftsecure'));
+            }
+
+            add_post_meta($this->get_order_id($order), '_transaction_id', $response->id, true);
+
+            if ($response->successful == 1) {
+
+                if ($order->has_status(array('pending', 'failed'))) {
+                    $order->reduce_order_stock();
+                }
+
+                $order->payment_complete();
+                $order->add_order_note(sprintf(__('EFTsecure charge complete (Transaction ID: %s)', 'woocommerce-gateway-stripe'), $response->id));
+
+                WC_Eftsecure::log("Successful payment: $response->id");
+
+                do_action('wc_gateway_eftsecure_process_payment', $response, $order);
+            } else {
+                $order->add_order_note(sprintf(__('EFTsecure Transaction Failed: (%s)', 'woocommerce-gateway-eftsecure'), $response->reason));
+            }
+        }
+
+    }
 
 
 	/**
@@ -310,6 +423,25 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 			$emails['WC_Email_Failed_Order']->trigger( $order_id );
 		}
 	}
+
+	private function get_eftsecure_transaction_id() {
+	    if (isset($_REQUEST['callpay_transaction_id'])) {
+	        return $_REQUEST['callpay_transaction_id'];
+        }
+        else if (isset($_REQUEST['eftsecure_transaction_id'])) {
+            return $_REQUEST['eftsecure_transaction_id'];
+        }
+        return null;
+    }
+
+    public function get_order_id($order) {
+	    if (method_exists($order, 'get_id')) {
+	        return $order->get_id();
+        }
+        else {
+	        return $order->id;
+        }
+    }
 }
 
 function customEventJS() {

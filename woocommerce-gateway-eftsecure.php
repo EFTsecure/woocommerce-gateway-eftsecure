@@ -4,7 +4,7 @@
  * Description: Take bank payments on your store using EFTsecure.
  * Author: CallPay
  * Author URI: http://www.eftsecure.co.za/
- * Version: 1.0.2
+ * Version: 1.0.3
  * Text Domain: woocommerce-gateway-eftsecure
  * Domain Path: /languages
  *
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Required minimums and constants
  */
-define( 'WC_EFTSECURE_VERSION', '1.0.2' );
+define( 'WC_EFTSECURE_VERSION', '1.0.3' );
 define( 'WC_EFTSECURE_MIN_WC_VER', '2.2.0' );
 define( 'WC_EFTSECURE_MAIN_FILE', __FILE__ );
 define( 'WC_EFTSECURE_PLUGIN_URL', untrailingslashit( plugins_url( basename( plugin_dir_path( __FILE__ ) ), basename( __FILE__ ) ) ) );
@@ -94,10 +94,6 @@ class WC_Eftsecure {
 		$this->init_gateways();
 
 		add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( $this, 'plugin_action_links' ) );
-		add_action( 'woocommerce_order_status_on-hold_to_processing', array( $this, 'capture_payment' ) );
-		add_action( 'woocommerce_order_status_on-hold_to_completed', array( $this, 'capture_payment' ) );
-		add_action( 'woocommerce_order_status_on-hold_to_cancelled', array( $this, 'cancel_payment' ) );
-		add_action( 'woocommerce_order_status_on-hold_to_refunded', array( $this, 'cancel_payment' ) );
 	}
 
 	/**
@@ -228,62 +224,6 @@ class WC_Eftsecure {
 	public function add_gateways( $methods ) {
         $methods[] = 'WC_Gateway_Eftsecure';
 		return $methods;
-	}
-
-	/**
-	 * Capture payment when the order is changed from on-hold to complete or processing
-	 *
-	 * @param  int $order_id
-	 */
-	public function capture_payment( $order_id ) {
-		$order = wc_get_order( $order_id );
-
-		if ( 'eftsecure' === $order->payment_method ) {
-			$transaction_id = get_post_meta( $order_id, '_eftsecure_transaction_id', true );
-			$captured = get_post_meta( $order_id, '_eftsecure_charge_captured', true );
-
-			if ( $charge && 'no' === $captured ) {
-				$result = WC_Eftsecure_API::request( array(
-					'amount'   => $order->get_total() * 100,
-					'expand[]' => 'balance_transaction'
-				), 'charges/' . $charge . '/capture' );
-
-				if ( is_wp_error( $result ) ) {
-					$order->add_order_note( __( 'Unable to capture charge!', 'woocommerce-gateway-eftsecure' ) . ' ' . $result->get_error_message() );
-				} else {
-					$order->add_order_note( sprintf( __( 'EFTsecure charge complete (Charge ID: %s)', 'woocommerce-gateway-eftsecure' ), $result->id ) );
-					update_post_meta( $order->id, '_eftsecure_charge_captured', 'yes' );
-
-					// Store other data such as fees
-					update_post_meta( $order->id, 'EFTsecure Payment ID', $result->id );
-
-					if ( isset( $result->balance_transaction ) && isset( $result->balance_transaction->fee ) ) {
-						$fee = ! empty( $result->balance_transaction->fee ) ? number_format( $result->balance_transaction->fee / 100, 2, '.', '' ) : 0;
-						$net = ! empty( $result->balance_transaction->net ) ? number_format( $result->balance_transaction->net / 100, 2, '.', '' ) : 0;
-						update_post_meta( $order->id, 'EFTsecure Fee', $fee );
-						update_post_meta( $order->id, 'Net Revenue From EFTsecure', $net );
-					}
-				}
-			}
-		}
-	}
-
-	/**
-	 * Cancel pre-auth on refund/cancellation
-	 *
-	 * @param  int $order_id
-	 */
-	public function cancel_payment( $order_id ) {
-		$order = wc_get_order( $order_id );
-
-		if ( 'eftsecure' === $order->payment_method ) {
-			$transaction_id = get_post_meta( $order_id, '_eftsecure_transaction_id', true );
-
-			if ( $transaction_id ) {
-                $order->add_order_note( sprintf( __( 'EFTsecure refunds need to be manually processed', 'woocommerce-gateway-eftsecure' )) );
-                delete_post_meta( $order->id, '_eftsecure_transaction_id' );
-			}
-		}
 	}
 
 	public static function log( $message ) {
