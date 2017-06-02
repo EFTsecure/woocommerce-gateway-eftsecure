@@ -4,7 +4,7 @@
 
 **Tags:** eft, eftsecure, woocommerce
 
-**Tested:** WooCommerce V2.6.8
+**Tested:** WooCommerce >= V2.2.0
 
 ### Description
 

@@ -11,11 +11,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WC_Eftsecure_API {
 
 	/**
-	 * EftSecure API Endpoint
-	 */
-	const ENDPOINT = 'https://services.callpay.com/api/v1/';
-
-	/**
 	 * Secret API Username.
 	 * @var string
 	 */
@@ -26,6 +21,27 @@ class WC_Eftsecure_API {
      * @var string
      */
     private static $password = '';
+
+    private static $settings = [
+        'api_endpoint' => 'https://services.callpay.com/api/v1/',
+        'app_domain' => 'https://eftsecure.callpay.com'
+    ];
+
+    /**
+     * @param $setting
+     * @return mixed|null
+     */
+    public static function getSetting($setting) {
+        $settings = self::$settings;
+        if ( file_exists( dirname( __FILE__ ) . '/local-config.php' ) ) {
+            $settings = array_merge($settings, require(dirname( __FILE__ ) . '/local-config.php'));
+        }
+
+        if (isset($settings[$setting])) {
+            return $settings[$setting];
+        }
+        return null;
+    }
 
 	/**
 	 * Set api username.
@@ -76,15 +92,16 @@ class WC_Eftsecure_API {
 	/**
 	 * Send the request to EftSecure's API
 	 *
-	 * @param array $request
+	 * @param mixed $request
 	 * @param string $api
 	 * @return array|WP_Error
 	 */
-	public static function request( $request, $api = 'charges', $method = 'POST' ) {
-		WC_Eftsecure::log( "{$api} request: " . print_r( $request, true ) );
+	public static function request( $request, $api = 'user/login', $method = 'POST' ) {
+	    $url = self::getSetting('api_endpoint') . $api;
+		WC_Eftsecure::log( "{$api} request to ".$url . print_r( $request, true ) );
 
 		$response = wp_remote_post(
-			self::ENDPOINT . $api,
+			self::getSetting('api_endpoint') . $api,
 			array(
 				'method'        => $method,
 				'headers'       => array(
@@ -92,22 +109,27 @@ class WC_Eftsecure_API {
 				),
 				'body'       => apply_filters( 'woocommerce_eftsecure_request_body', $request, $api ),
 				'timeout'    => 70,
-				'user-agent' => 'WooCommerce ' . WC()->version
+				'user-agent' => 'WooCommerce ' . WC()->version,
+                'x-domain' => home_url( '/' )
 			)
 		);
 
         $parsed_response = json_decode( $response['body'] );
 
-		if ( is_wp_error( $response ) || empty( $response['body'] ) ) {
+        if(empty( $response['body'] ) ) {
+            WC_Eftsecure::log( "Error Response: " . print_r( $response, true ) );
+            return new WP_Error( 'eftsecure_error', __( 'There was a problem connecting to the payment gateway.'.$parsed_response->name, 'woocommerce-gateway-eftsecure' ) );
+        }
 
+        if ( is_wp_error( $response )) {
 			WC_Eftsecure::log( "Error Response: " . print_r( $response, true ) );
 			return new WP_Error( 'eftsecure_error', __( 'There was a problem connecting to the payment gateway.'.$parsed_response->name, 'woocommerce-gateway-eftsecure' ) );
 		}
 
 		// Handle response
 		if ( ! empty( $parsed_response->status ) && $parsed_response->status != 200 ) {
-            $code = $parsed_response->code;
-			return new WP_Error( $code, $parsed_response->name );
+			$error = new WP_Error( $parsed_response->status, $parsed_response->name );
+			return $error;
 		} else {
 			return $parsed_response;
 		}
@@ -122,15 +144,39 @@ class WC_Eftsecure_API {
 	public static function get_token_data() {
         $response = self::request( '', 'token', 'POST' );
         if ( is_wp_error( $response ) ) {
-            throw new Exception($response->get_error_message());
+            WC_Eftsecure::log( 'EFTsecure Token API Error: '.$response->get_error_message() );
+            throw new Exception('EFTsecure Token: '.$response->get_error_message());
         }
         return $response;
     }
 
+    /**
+     * @param $transaction_id
+     * @return stdClass|WP_Error
+     * @throws Exception
+     */
     public static function get_transaction_data($transaction_id) {
         $response = self::request('', 'gateway-transaction/'.$transaction_id, 'GET');
         if ( is_wp_error( $response ) ) {
-            throw new Exception($response->get_error_message());
+            WC_Eftsecure::log( 'EFTsecure Transaction API Error: '.$response->get_error_message() );
+            throw new Exception('EFTsecure Transaction: '.$response->get_error_message());
+        }
+        return $response;
+    }
+
+    /**
+     * Fetches a payment key
+     *
+     * @param $data array
+     * @return stdClass|WP_Error
+     * @throws Exception
+     */
+    public static function get_payment_key_data($data = []) {
+        $query = http_build_query($data);
+        $response = self::request( $query, 'eft/payment-key', 'POST' );
+        if ( is_wp_error( $response ) ) {
+            WC_Eftsecure::log( 'EFTsecure Payment Key API Error: '.$response->get_error_message() );
+            throw new Exception('EFTsecure Payment Key: '.$response->get_error_message());
         }
         return $response;
     }
