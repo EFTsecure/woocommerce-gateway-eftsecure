@@ -334,7 +334,12 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
         $order->add_order_note(sprintf( __( 'EFTsecure charge complete (Transaction ID: %s)', 'woocommerce-gateway-stripe' ), $response->id ));
 
         if ( $order->has_status( array( 'pending', 'failed' ) ) ) {
-            $order->reduce_order_stock();
+            if ( version_compare( WC_VERSION, '3.0', '>=' ) ) {
+                // new version code
+                wc_reduce_stock_levels($order);
+            } else {
+                $order->reduce_order_stock();
+            }
         }
 
         $order->update_status( 'wc-processing');
@@ -349,6 +354,8 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
             WC_Eftsecure::log( __( 'OrderID was not specified in IPN response', 'woocommerce-gateway-eftsecure' ) );
             throw new Exception( __( 'OrderID was not specified in IPN response', 'woocommerce-gateway-eftsecure' ) );
         }
+
+        WC_Eftsecure::log( __( 'EFT IPN response received '.json_encode($_REQUEST), 'woocommerce-gateway-eftsecure' ) );
 
         $order_id = $_REQUEST['order_id'];
         /**
@@ -390,9 +397,13 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
             add_post_meta($this->get_order_id($order), '_transaction_id', $response->id, true);
 
             if ($response->successful == 1) {
-
                 if ($order->has_status(array('pending', 'failed'))) {
-                    $order->reduce_order_stock();
+                    if ( version_compare( WC_VERSION, '3.0', '>=' ) ) {
+                        // new version code
+                        wc_reduce_stock_levels($order);
+                    } else {
+                        $order->reduce_order_stock();
+                    }
                 }
 
                 $order->payment_complete();

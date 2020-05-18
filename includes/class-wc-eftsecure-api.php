@@ -114,7 +114,15 @@ class WC_Eftsecure_API {
 			)
 		);
 
+        if (is_wp_error($response)) {
+            WC_Eftsecure::log( "WP Error: ".$response->get_error_message());
+            return $response;
+        }
+
+        WC_Eftsecure::log( "Response: ".json_encode($response));
+
         $parsed_response = json_decode( $response['body'] );
+
 
         if(empty( $response['body'] ) ) {
             WC_Eftsecure::log( "Error Response: " . print_r( $response, true ) );
@@ -127,12 +135,7 @@ class WC_Eftsecure_API {
 		}
 
 		// Handle response
-		if ( ! empty( $parsed_response->status ) && $parsed_response->status != 200 ) {
-			$error = new WP_Error( $parsed_response->status, $parsed_response->name );
-			return $error;
-		} else {
-			return $parsed_response;
-		}
+        return $parsed_response;
 	}
 
     /**
@@ -159,7 +162,6 @@ class WC_Eftsecure_API {
         $response = self::request('', 'gateway-transaction/'.$transaction_id, 'GET');
         if ( is_wp_error( $response ) ) {
             WC_Eftsecure::log( 'EFTsecure Transaction API Error: '.$response->get_error_message() );
-            throw new Exception('EFTsecure Transaction: '.$response->get_error_message());
         }
         return $response;
     }
