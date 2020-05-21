@@ -20,6 +20,9 @@ Save settings.
 Gateway should appear on checkout if configured with correct credentials.
 
 == Changelog ==
+= 1.0.5 - 2020.05.21 =
+* Checkout bug fixes
+
 = 1.0.4 - 2020.05.16 =
 * Woocommerce 3.X support
 
