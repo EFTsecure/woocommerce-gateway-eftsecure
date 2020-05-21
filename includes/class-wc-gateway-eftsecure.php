@@ -331,7 +331,7 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 
         add_post_meta( $this->get_order_id($order), '_transaction_id', $response->id, true );
 
-        $order->add_order_note(sprintf( __( 'EFTsecure charge complete (Transaction ID: %s)', 'woocommerce-gateway-stripe' ), $response->id ));
+        $order->add_order_note(sprintf( __( 'EFTsecure charge complete (Transaction ID: %s)', 'woocommerce-gateway-eftsecure' ), $response->id ));
 
         if ( $order->has_status( array( 'pending', 'failed' ) ) ) {
             if ( version_compare( WC_VERSION, '3.0', '>=' ) ) {
@@ -382,7 +382,7 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
 
 
             WC_Eftsecure::log("Info: Begin processing IPN for payment for order $order_id for the amount of {$order->get_total()}");
-            $order->add_order_note(sprintf(__('EFTsecure IPN received : %s', 'woocommerce-gateway-stripe'), (($response->successful) ? 'SUCCESS' : 'FAILED')));
+            $order->add_order_note(sprintf(__('EFTsecure IPN received : %s', 'woocommerce-gateway-eftsecure'), (($response->successful) ? 'SUCCESS' : 'FAILED')));
 
             WC_Eftsecure::log("Processing response: " . print_r($response, true));
 
@@ -407,7 +407,7 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
                 }
 
                 $order->payment_complete();
-                $order->add_order_note(sprintf(__('EFTsecure charge complete (Transaction ID: %s)', 'woocommerce-gateway-stripe'), $response->id));
+                $order->add_order_note(sprintf(__('EFTsecure charge complete (Transaction ID: %s)', 'woocommerce-gateway-eftsecure'), $response->id));
 
                 WC_Eftsecure::log("Successful payment: $response->id");
 
@@ -415,6 +415,8 @@ class WC_Gateway_Eftsecure extends WC_Payment_Gateway {
             } else {
                 $order->add_order_note(sprintf(__('EFTsecure Transaction Failed: (%s)', 'woocommerce-gateway-eftsecure'), $response->reason));
             }
+        } else {
+            $order->add_order_note(sprintf(__('Transaction updated .. ignoring IPN.', 'woocommerce-gateway-eftsecure')));
         }
 
     }

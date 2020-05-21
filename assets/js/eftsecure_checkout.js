@@ -1,6 +1,8 @@
 jQuery( function( $ ) {
 	'use strict';
 
+    window.eftPaymentKey = null;
+
     window.wc_checkout_form = {
         submit_error: function(error_message) {
             var $checkout_form = jQuery('form.checkout');
@@ -111,63 +113,91 @@ jQuery( function( $ ) {
 				var $data = jQuery('#eftsecure-payment-data');
 				e.preventDefault();
 
-                jQuery.ajax({
-                    type: 'POST',
-                    url: wc_checkout_params.checkout_url,
-                    data: jQuery('form.checkout').serialize(),
-                    dataType: 'json',
-                    success: function(result) {
-                        try {
-                            if ('success' === result.result) {
-                                var $paymentKey = result.paymentKey;
-                                console.log($paymentKey);
-                                console.log('Initiating transaction');
-								eftSec.checkout.init({
-                                    paymentKey: $paymentKey,
-									onLoad: function() {
-										wc_eftsecure_form.unblock();
-									},
-									onComplete: function(data) {
-										eftSec.checkout.hideFrame();
-										wc_eftsecure_form.eftsecure_submit = true;
-										var $form = wc_eftsecure_form.form;
-										if ($form.find( 'input.eftsecure_transaction_id' ).length > 0) {
-											$form.find('input.eftsecure_transaction_id').remove();
-										}
-										$form.append( '<input type="hidden" class="eftsecure_transaction_id" name="eftsecure_transaction_id" value="' + data.transaction_id + '"/>' );
-										$form.submit();
-									}
-								});
-
-                            } else if ('failure' === result.result) {
-                                throw 'Result failure';
-                            } else {
-                                throw 'Invalid response';
+				if (window.eftPaymentKey != null) {
+                    console.log('Initiating transaction existing transaction');
+                    eftSec.checkout.init({
+                        paymentKey: window.eftPaymentKey,
+                        onLoad: function () {
+                            wc_eftsecure_form.unblock();
+                        },
+                        onComplete: function (data) {
+                            console.log('onComplete', data);
+                            console.log('form', wc_eftsecure_form);
+                            try {
+                                eftSec.checkout.hideFrame();
                             }
-                        } catch (err) {
-                            // Reload page
-                            if (true === result.reload) {
-                                window.location.reload();
-                                return;
+                            catch (e) {
+                                console.log(e);
                             }
-
-                            // Trigger update in case we need a fresh nonce
-                            if (true === result.refresh) {
-                                jQuery(document.body).trigger('update_checkout');
+                            wc_eftsecure_form.eftsecure_submit = true;
+                            var $form = wc_eftsecure_form.form;
+                            if ($form.find('input.eftsecure_transaction_id').length > 0) {
+                                $form.find('input.eftsecure_transaction_id').remove();
                             }
-
-                            // Add new errors
-                            if (result.messages) {
-                                window.wc_checkout_form.submit_error(result.messages);
-                            } else {
-                                window.wc_checkout_form.submit_error('<div class="woocommerce-error">' + wc_checkout_params.i18n_checkout_error + '</div>');
-                            }
+                            $form.append('<input type="hidden" class="eftsecure_transaction_id" name="eftsecure_transaction_id" value="' + data.transaction_id + '"/>');
+                            $form.submit();
                         }
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        wc_checkout_form.submit_error('<div class="woocommerce-error">' + errorThrown + '</div>');
-                    }
-                });
+                    });
+                }
+				else {
+                    jQuery.ajax({
+                        type: 'POST',
+                        url: wc_checkout_params.checkout_url,
+                        data: jQuery('form.checkout').serialize(),
+                        dataType: 'json',
+                        success: function (result) {
+                            try {
+                                if ('success' === result.result) {
+                                    window.eftPaymentKey = result.paymentKey;
+                                    console.log(window.eftPaymentKey);
+                                    console.log('Initiating transaction first time');
+                                    eftSec.checkout.init({
+                                        paymentKey: window.eftPaymentKey,
+                                        onLoad: function () {
+                                            wc_eftsecure_form.unblock();
+                                        },
+                                        onComplete: function (data) {
+                                            eftSec.checkout.hideFrame();
+                                            wc_eftsecure_form.eftsecure_submit = true;
+                                            var $form = wc_eftsecure_form.form;
+                                            if ($form.find('input.eftsecure_transaction_id').length > 0) {
+                                                $form.find('input.eftsecure_transaction_id').remove();
+                                            }
+                                            $form.append('<input type="hidden" class="eftsecure_transaction_id" name="eftsecure_transaction_id" value="' + data.transaction_id + '"/>');
+                                            $form.submit();
+                                        }
+                                    });
+
+                                } else if ('failure' === result.result) {
+                                    throw 'Result failure';
+                                } else {
+                                    throw 'Invalid response';
+                                }
+                            } catch (err) {
+                                // Reload page
+                                if (true === result.reload) {
+                                    window.location.reload();
+                                    return;
+                                }
+
+                                // Trigger update in case we need a fresh nonce
+                                if (true === result.refresh) {
+                                    jQuery(document.body).trigger('update_checkout');
+                                }
+
+                                // Add new errors
+                                if (result.messages) {
+                                    window.wc_checkout_form.submit_error(result.messages);
+                                } else {
+                                    window.wc_checkout_form.submit_error('<div class="woocommerce-error">' + wc_checkout_params.i18n_checkout_error + '</div>');
+                                }
+                            }
+                        },
+                        error: function (jqXHR, textStatus, errorThrown) {
+                            wc_checkout_form.submit_error('<div class="woocommerce-error">' + errorThrown + '</div>');
+                        }
+                    });
+                }
 
 				wc_eftsecure_form.block();
 
